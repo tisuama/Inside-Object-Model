@@ -89,6 +89,10 @@ pb->cell_block; // OK
 ```
 
 ![内存布局](./内存布局.png)
-当我们写pz->rotate()时，会在编译期决定以下两点。
-1) 固定的可用接口。也就是说，pz只能够调用ZooAnimal的public接口。
-2) 该接口的`access level`（例如rotate()是ZooAnimal的一个public member
+一个pointer或一个reference之所以支持多态，是因为它们不会引发内存中任何“与类型有关的内存委托操作”，会受到改变的只有它们指向的内存的“大小和内存解释方式”而已
+
+然而，任何人如果企图改变object za的大小，便会违反其定义中受契约抱回的“资源需求量”，如果把整个Bear object指定给za，则会溢出它所配置得到的内存。
+
+
+当一个base class object被直接初始化为一个derived class object时derived class就会被切割(sliced)，以塞入较小的base type内存中。
+
