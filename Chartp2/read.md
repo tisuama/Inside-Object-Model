@@ -3,8 +3,45 @@
 ARM => C++ Annotated Reference Manual
 
 C++ Standard在Section 12.1说
->	对于class X，如果没有热河user-declared constructor，那么会有一个default constructor被暗中(implicitly)声明出来，它将是一个trivial(没啥用的)constructor。
+>	对于class X，如果没有任何user-declared constructor，那么会有一个default constructor被暗中(implicitly)声明出来，它将是一个trivial(没啥用的)constructor。
+
+
+```c++
+class Foo {
+public:
+	int val;
+	Foo *next;
+};
+
+void foo_bar() {
+	Foo bar;  // 程序要求bar的data members都初始化为0
+	if (bar.val || bar.next) {
+		// do something
+	}
+}
+```
+
+什么时候才会合成一个default constructor呢？当编译器需要它的时候！此外合成出来的constructor只执行编译器所需要的行动。也就是说，即使有需要为class Foo合成一个default constructor，那个constructor也不会将两个data members 初始化为0。
 
 ### Nontrivaial default constructor
 
 Nontrivaial default constructor在ARM的术语中就是编译器所需要的哪种，必要的化会由编译器合成。
+
+a) 带有default constructor的member class object
+如果一个class没有任何constructor，但它有一个member object，而后者有default constructor，那么这个implicit default constructor即使"nontrivial"。
+
+如果有多个class member objects都要求constructor初始化操作，将如何呢？C++语言要求以member objects在class中的声明次序来调用各个constructors，这一点由编译器完成，它为每一个constructor安插程序代码，以"members声明次序“调用每一个member所关联的default constructors。
+
+
+
+b) 带有default constructor的base class
+类似的道理，如果没有任何一个construct 的class派生自一个”带有default constructor“的base class，那么这个derived class的default constructor会被视为nontrivial。
+
+
+c）带有virtual function的class
+class声明（或继承）一个virtual function
+
+![vptr](./vptr.png)
+
+d) 带有virtual base class的class
+![bptr](./bptr.png)
