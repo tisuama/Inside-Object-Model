@@ -28,14 +28,14 @@ void foo_bar() {
 Nontrivaial default constructor在ARM的术语中就是编译器所需要的哪种，必要的化会由编译器合成。
 
 a) 带有default constructor的member class object
-如果一个class没有任何constructor，但它有一个member object，而后者有default constructor，那么这个implicit default constructor即使"nontrivial"。
+如果一个class没有任何constructor，但它有一个member object，而后者有default constructor，那么这个implicit default constructor即是"nontrivial"。
 
-如果有多个class member objects都要求constructor初始化操作，将如何呢？C++语言要求以member objects在class中的声明次序来调用各个constructors，这一点由编译器完成，它为每一个constructor安插程序代码，以"members声明次序“调用每一个member所关联的default constructors。
+如果有多个class member objects都要求constructor初始化操作，将如何呢？C++语言要求以member objects在class中的声明次序来调用各个constructors，这一点由编译器完成，它为每一个constructor安插程序代码，以“members声明次序”调用每一个member所关联的default constructors。
 
 
 
 b) 带有default constructor的base class
-类似的道理，如果没有任何一个construct 的class派生自一个”带有default constructor“的base class，那么这个derived class的default constructor会被视为nontrivial。
+类似的道理，如果没有任何一个construct 的class派生自一个“带有default constructor“的base class，那么这个derived class的default constructor会被视为nontrivial。
 
 
 c）带有virtual function的class
@@ -45,3 +45,68 @@ class声明（或继承）一个virtual function
 
 d) 带有virtual base class的class
 ![bptr](./bptr.png)
+
+
+
+
+### copy constructor的构建操作
+
+
+三种情况：
+```c++
+class X { ... };
+
+X x;
+
+X xx = x; // case 1
+
+
+extern void foo(X x);
+
+X xx;
+foo(xx); // case 2
+
+
+X foo_bar() {
+	X xx;
+	return xx; // case 3
+}
+
+```
+
+向default  constructor一样，如果class没有声明一个copy constructor，就会隐含的声明或隐含的定义出现。和以前一样，copy constructor也分为trival和nontrival两种，区别是class是否展现出所谓的'bitwise copy constructor'。
+
+
+#### bitwise copy semantics（位逐次拷贝）
+
+```c++
+class Word { // bitwise copy semantics（位逐次拷贝）语义
+public:
+	Word(const char*);
+	~Word( {delete [] str;}
+private:
+	int cnt;
+	char* str;
+};
+
+
+
+class Word {
+public:
+	Word(const String&);
+	~Word();
+
+private:
+	int cnt;
+	String str;
+};
+
+其中String声明一个explicit copy constructor：
+class String {
+public:
+	String(const char*);
+	String(const String&);
+	~String();
+};
+
+```
