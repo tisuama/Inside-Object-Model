@@ -58,21 +58,23 @@ class X { ... };
 
 X x;
 
-X xx = x; // case 1
+X xx = x; // case 1：以一个object的内容作为另一个class object的初值
 
 
 extern void foo(X x);
 
 X xx;
-foo(xx); // case 2
+foo(xx); // case 2：参数
 
 
 X foo_bar() {
 	X xx;
-	return xx; // case 3
+	return xx; // case 3：返回值
 }
 
 ```
+
+一个良好的编译器可以为大部分class object产生bitwise copies，因为它们有bitwise coy semantics语义。
 
 向default  constructor一样，如果class没有声明一个copy constructor，就会隐含的声明或隐含的定义出现。和以前一样，copy constructor也分为trival和nontrival两种，区别是class是否展现出所谓的'bitwise copy constructor'。
 
@@ -88,8 +90,6 @@ private:
 	int cnt;
 	char* str;
 };
-
-
 
 class Word {
 public:
@@ -108,5 +108,13 @@ public:
 	String(const String&);
 	~String();
 };
-
 ```
+### 不要BitWise Coy Semantics
+
+什么时候不展现"bitwise copy semantics呢？存在四种情况：
+
+1. class含有member object，后者声明一个copy constructor
+2. class继承一个base class，后者存在copy constructor
+3. class声明一个或多个virtual functions
+4. class派生自一个继承链，其中有一个或多个virtual base class
+
