@@ -118,3 +118,9 @@ public:
 3. class声明一个或多个virtual functions
 4. class派生自一个继承链，其中有一个或多个virtual base class
 
+
+### 重新设定virtual table指针
+编译期间程序扩张操作：
+1. 增加一个virtual function table(vtbl)，内含每一个有作用的virtual function地址
+2. 将一个virtual function table的指针(vptr)安插在class object内部
+
