@@ -109,18 +109,23 @@ public:
 	~String();
 };
 ```
-### 不要BitWise Coy Semantics
+## 不要BitWise Coy Semantics
 
 什么时候不展现"bitwise copy semantics呢？存在四种情况：
 
-1. class含有member object，后者声明一个copy constructor
-2. class继承一个base class，后者存在copy constructor
+1. class含有member object，后者声明一个copy constructor（无论是被明确声明或者被合成)
+2. class继承一个base class，后者存在copy constructor（无论是被明确声明或者被合成）
 3. class声明一个或多个virtual functions
 4. class派生自一个继承链，其中有一个或多个virtual base class
+其中1、2两种情况中，编译器必须将member或者base class的'copy constructor'调用操作安插到被合成的conpy constructor中。
 
 
-### 重新设定virtual table指针
+### 重新设定virtual table指针（情况3）
+
 编译期间程序扩张操作：
 1. 增加一个virtual function table(vtbl)，内含每一个有作用的virtual function地址
 2. 将一个virtual function table的指针(vptr)安插在class object内部
 
+### 处理virtual base class subobject（情况4）
+
+virtual base class的存在需要特殊处理。
