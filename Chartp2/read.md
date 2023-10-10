@@ -79,7 +79,7 @@ X foo_bar() {
 向default  constructor一样，如果class没有声明一个copy constructor，就会隐含的声明或隐含的定义出现。和以前一样，copy constructor也分为trival和nontrival两种，区别是class是否展现出所谓的'bitwise copy constructor'。
 
 
-#### bitwise copy semantics（位逐次拷贝）
+### bitwise copy semantics（位逐次拷贝）
 
 ```c++
 class Word { // bitwise copy semantics（位逐次拷贝）语义
@@ -115,7 +115,7 @@ public:
 
 1. class含有member object，后者声明一个copy constructor（无论是被明确声明或者被合成)
 2. class继承一个base class，后者存在copy constructor（无论是被明确声明或者被合成）
-3. class声明一个或多个virtual functions
+3. class声明了一个或多个virtual functions
 4. class派生自一个继承链，其中有一个或多个virtual base class
 其中1、2两种情况中，编译器必须将member或者base class的'copy constructor'调用操作安插到被合成的conpy constructor中。
 
@@ -128,4 +128,35 @@ public:
 
 ### 处理virtual base class subobject（情况4）
 
-virtual base class的存在需要特殊处理。
+virtual base class的存在需要特殊处理。一个class object如果以另一个object作为初始值，而后者有一个virtual base class subobject，那么也会使'bitwise copy emantics'失效。
+
+
+那么memberwise初始化了，一个virtual base class的存在会使bitwise copy semantics无效，其次，问题并不发生于“一个class object以另一个同类object作为初始值时”， 而是发生于“一个class object以其derived class的某个object作为初值时。
+
+```c++
+class RedPanda: public Raccoon {
+public:
+	RedPanda() {}
+	RedPanda(int val) {}
+private:
+	// 必要数据
+};
+
+Raccoon rocky;	
+Raccoon little_critter = rocky; // bitwise copy足够
+
+RedPanda little_red;
+Raccoon little_critter = little_red; // X
+
+// 这种情况下，为了完成正确的little_critter初值设定，编译器必须合成一个copy constructor，安插一些代码以设定virtual base class  pointer/offset的初值，以每一个member执行必要的memberwise初始化操作。
+```
+>	
+在C++中，virtual base class pointer和virtual base class offset是与面向对象编程中的多态性（polymorphism）相关的概念。
+
+虚拟基类指针（virtual base class pointer）是指在派生类对象中用来存储基类对象的指针。在C++中，如果一个基类被声明为虚基类（使用virtual关键字），则在每个派生类对象中都会包含一个指向该基类对象的指针。通过这个指针，可以在运行时动态地访问虚基类对象。
+
+虚拟基类偏移量（virtual base class offset）是指在派生类对象中虚基类对象相对于派生类对象起始位置的偏移量。这个偏移量是在编译时计算并存储在派生类对象中的。当通过虚基类指针访问虚基类对象时，可以使用这个偏移量来确定虚基类对象在派生类对象中的位置。
+虚拟基类指针和偏移量是在实现多态性时使用的机制，它们允许在运行时根据对象的实际类型来访问基类对象。这样可以在不同的派生类对象中使用相同的基类接口，而实现各自不同的行为。这种灵活性是C++面向对象编程的重要特点之一。
+
+### bitwise copy semantics总结
+已经看到四种情况，class不在保持'bitwise copy semantics'， 而且default copy construct如果未被声明，会被视为是notrivial。在这四种情况下，如果缺乏一个已声明的copy construct，编译器为了正确处理”以一个class object作为另一个class object的初值“，必须合成出一个copy constructor。
