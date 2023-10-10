@@ -1,4 +1,4 @@
-## 构造函数语意学
+## 2.1 构造函数语意学
 
 ARM => C++ Annotated Reference Manual
 
@@ -79,7 +79,7 @@ X foo_bar() {
 向default  constructor一样，如果class没有声明一个copy constructor，就会隐含的声明或隐含的定义出现。和以前一样，copy constructor也分为trival和nontrival两种，区别是class是否展现出所谓的'bitwise copy constructor'。
 
 
-### bitwise copy semantics（位逐次拷贝）
+## 2.2 bitwise copy semantics（位逐次拷贝）
 
 ```c++
 class Word { // bitwise copy semantics（位逐次拷贝）语义
@@ -160,3 +160,37 @@ Raccoon little_critter = little_red; // X
 
 ### bitwise copy semantics总结
 已经看到四种情况，class不在保持'bitwise copy semantics'， 而且default copy construct如果未被声明，会被视为是notrivial。在这四种情况下，如果缺乏一个已声明的copy construct，编译器为了正确处理”以一个class object作为另一个class object的初值“，必须合成出一个copy constructor。
+
+
+## 2.3 程序转化语义学
+```c++
+X foo() {
+	X xx;
+	// ...
+	return xx;
+}
+```
+1. 每次foo()被调用，就传回xx的值？？
+2. 如果Class X定义了一个copy construct，那么当foo()被调用时，保证该copy construct被调用？？
+
+### 明确的初始化操作
+```c++
+X x0
+void foo_bar()  {
+	X x1(x0);
+	X x2 = x0;
+	X x3 = X(x0);
+}
+
+转化为
+void foo_bar() {
+	X x1, x2, x3;
+
+	// 编译器安插X的copy construct调用操作
+	x1.X::X(x0);
+	x2.X::X(x0);
+	x3.X::X(x0);
+}
+
+
+```
