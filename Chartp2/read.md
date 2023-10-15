@@ -191,5 +191,17 @@ void foo_bar() {
 	x2.X::X(x0);
 	x3.X::X(x0);
 }
-
 ```
+
+#### 返回值的初始化
+已知这个函数含义：
+```
+X bar() {
+	X xx;
+	return xx;
+}
+```
+bar()返回值如何从局部对象xx中拷贝过来？
+1. 首先加上一个额外参数，类型时class object的reference，这个参数将会放置被”拷贝构建“而得到的返回值。
+2. 在return指令之前安插一个copy construct调用操作。
+
