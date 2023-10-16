@@ -1,5 +1,4 @@
 ## 2.1 构造函数语意学
-
 ARM => C++ Annotated Reference Manual
 
 C++ Standard在Section 12.1说
@@ -192,6 +191,26 @@ void foo_bar() {
 	x3.X::X(x0);
 }
 ```
+#### 参数初始化
+C++ standard中说吗，把一个class object当做参数传递给一个函数，相当于一下形式的初始化操作
+```c++
+void foo(X x0)
+
+// 调用
+X xx
+foo(xx);
+
+// 编译器实现为：
+X __temp0;
+// copy constructor调用
+__temp0.X::X(xx);
+
+// 改写函数调用操作，以使用临时对象
+foo(__temp0);
+
+// 此处声明也要修改，否则会调用拷贝构造
+void foo(X& x0);
+```
 
 #### 返回值的初始化
 已知这个函数含义：
@@ -204,4 +223,64 @@ X bar() {
 bar()返回值如何从局部对象xx中拷贝过来？
 1. 首先加上一个额外参数，类型时class object的reference，这个参数将会放置被”拷贝构建“而得到的返回值。
 2. 在return指令之前安插一个copy construct调用操作。
+
+这里可以有两种优化方式：
+```c++
+void bar(X& __result) {
+	X xx;
+	xx.X::X();
+	// 处理xx...
+	
+	// 调用拷贝构造函数
+	__result.X::X(xx);	
+	return ;
+}
+```
+
+#### 编译器层面优化
+在bar()这样函数中，所有return指令传回相同的具名数值，因此编译器可能自己做优化，方法是以result参数取代name return value。例如下面bar()定义:
+```c++
+X bar() {
+	X xx;
+	return xx;
+}
+
+// 编译器把其中xx以_result取代：
+void bar(X& __result) {
+	// default construct被调用
+	__result.X::X();
+	// 直接处理__result...
+	return ;
+}
+```
+这样的编译器优化操作，被称为`Named Return Value(NRV)`优化，NRV优化如今被视为标准C++编译器义不容辞的优化操作。为了对效率有所改善，请你想下以下代码：
+```c++
+class test {
+friend test foo(double) ;
+public
+	test() {
+		memset(array, 0, 100 * sizeof(double));
+	}
+private:
+	double array[100];
+};
+
+// 考虑一下函数，他产生、修改并传回一个test class object:
+test foo(double val) {
+	test local;
+	local.array[0] = val;
+	local.array[99] = val;
+	return local;
+}
+// double数组影响NRO优化需要相应的拷贝构造函数
+
+int main() {
+	for (int i = 0; i < 10000000; i++) {
+		// 这里也没有拷贝构造
+		test t = foo(double(i));
+	}
+	return 0;
+}
+```
+
 
