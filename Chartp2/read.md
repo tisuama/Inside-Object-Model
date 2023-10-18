@@ -276,11 +276,12 @@ test foo(double val) {
 
 int main() {
 	for (int i = 0; i < 10000000; i++) {
-		// 这里也没有拷贝构造
 		test t = foo(double(i));
 	}
 	return 0;
 }
 ```
+#### 总结
+一般而言，蛮对”以一个class object作为另一个class object的初值的情形，语言允许编译器有大量的自由发挥空间，其利益当然是导致机器码产生时有明显的效率提升，缺点则是不能够安全的规划你的copy construct的副作用，必须视其执行而定。
 
 

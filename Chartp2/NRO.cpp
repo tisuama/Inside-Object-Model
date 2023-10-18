@@ -3,6 +3,10 @@
   
 class MyClass {  
 public:  
+	MyClass(): data(nullptr), sz(0) { 
+		std::cout << "default construct " << std::endl;
+	}
+
     MyClass(int sz) : data(new int[sz]), sz(sz) {  
         std::cout << "Constructing MyClass with size " << sz << std::endl;  
     }  
@@ -34,7 +38,16 @@ MyClass createMyClass(int size) {
 }  
   
 int main() {  
-    MyClass obj = createMyClass(10); // NRO optimization may reduce copying here  
-    std::cout << "obj size: " << obj.size() << std::endl;  
+	{
+		std::cout << "=== start test 1 " << std::endl;
+    	MyClass obj = createMyClass(10); // NRO optimization may reduce copying here  
+    	std::cout << "obj size: " << obj.size() << std::endl;  
+	}
+
+	{
+		std::cout << "=== start test 2 " << std::endl;
+		// test2
+		MyClass test2 = MyClass(2);
+	}
     return 0;  
 }
