@@ -284,4 +284,15 @@ int main() {
 #### 总结
 一般而言，蛮对”以一个class object作为另一个class object的初值的情形，语言允许编译器有大量的自由发挥空间，其利益当然是导致机器码产生时有明显的效率提升，缺点则是不能够安全的规划你的copy construct的副作用，必须视其执行而定。
 
+### Copy Constructory要还是不要？
+```c++
+class Point3d {
+public:
+	Point3d(float x, float y, float z);
+private:
+	float _x, _y, _z;
+};
+```
+
+Point3d的default copy constructor被视为trivial，它既没有任何member（或base) class object带有copy constructor，也没有任何virtual base class或virtual function。所以，默认情况下，一个Point3d对象的`memberwise`初始化操作会导致bitwise coy，这样效率很高，安全性了？
 
