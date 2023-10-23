@@ -296,3 +296,4 @@ private:
 
 Point3d的default copy constructor被视为trivial，它既没有任何member（或base) class object带有copy constructor，也没有任何virtual base class或virtual function。所以，默认情况下，一个Point3d对象的`memberwise`初始化操作会导致bitwise coy，这样效率很高，安全性了？
 
+答案是"yes"，`biewise copy`既不会导致memory leak,也不会产生address aliasing，因此它既快速又安全。
