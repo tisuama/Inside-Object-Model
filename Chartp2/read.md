@@ -254,6 +254,8 @@ void bar(X& __result) {
 }
 ```
 这样的编译器优化操作，被称为`Named Return Value(NRV)`优化，NRV优化如今被视为标准C++编译器义不容辞的优化操作。为了对效率有所改善，请你想下以下代码：
+
+`NRV`优化本质上是优化掉拷贝构造函数，并不是使用了NRV优化选项就一定能用NRV优化。
 ```c++
 class test {
 friend test foo(double) ;
@@ -297,3 +299,44 @@ private:
 Point3d的default copy constructor被视为trivial，它既没有任何member（或base) class object带有copy constructor，也没有任何virtual base class或virtual function。所以，默认情况下，一个Point3d对象的`memberwise`初始化操作会导致bitwise coy，这样效率很高，安全性了？
 
 答案是"yes"，`biewise copy`既不会导致memory leak,也不会产生address aliasing，因此它既快速又安全。
+
+```c++
+Point3d operator+(const Point3d&, const Point3d&);
+Point3d operator-(const Point3d&, const Point3d&);
+Point3d operator*(const Point3d&, int);
+
+// 所有下列类型函数都能符合NRV template
+{
+    Point3d result;
+    return result;
+}
+
+// 实现copy construct最简单方法：
+Point3d::Point3d(const Point3d& rhs) {
+    _x = rhs._x;
+    _y = rhs._y;
+    _z = rhs._z;
+}
+
+// 使用memcpy实现更有效率:
+Point3d::Point3d(const Point3d& rhs) {
+    memcpy(this, &rhs, sizeof(Point3d));
+}
+
+/*
+然而，无论是`memcpy`或者`memset`都只在class不含任何由编译器产生内部member时才能有效运行// ，如果Point3d声明一个或一个以上virtual functions，或内含一个virtual base class，那么使用上述函数会导致那些“被编译器产生的内部member”的初值被改写，例如：
+*/
+class Shape {
+public:
+    // 错误：会改变内部vptr
+    Shape(): { memset(this, 0, sizeof(Shape)) };
+    virtual ~Shape();
+};
+
+// 编译器被construct扩张的内容看起来是：
+Shape::Shape() {{
+    __vptr__Shape = _vtbl__Shape;
+    // memset会清空vptr
+    memset(this, 0, sizeof(Shape));
+}
+```
