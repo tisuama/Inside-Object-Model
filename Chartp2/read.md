@@ -340,3 +340,8 @@ Shape::Shape() {{
     memset(this, 0, sizeof(Shape));
 }
 ```
+
+copy constructor的应用，迫使编译器多多少少对你的程序代码做部分转化，尤其当一个函数以传值的方式返回一个class object，而该class有一个copy construct（无论是明确定义还是合成的）时，这将导致深奥的程序转化-无论是在函数定义还是使用上。此外编译器也将copy construct的调用操作优化，以一个额外的第一参数取代NRV。
+
+
+#### 成员们的初始化队伍
