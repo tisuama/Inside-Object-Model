@@ -345,3 +345,48 @@ copy constructor的应用，迫使编译器多多少少对你的程序代码做�
 
 
 #### 成员们的初始化队伍
+首先要弄明白何时使用`initialization list`才有意义。
+
+```c++
+class Word {
+    String _name;
+    int    _cnt;
+public:
+    Word() {
+        _name = 0;
+        _cnt = 0;
+    }
+};
+
+// 可能展开成一下形式：
+Word::Word {
+    // 调用Stirng 的default construct
+    _name.String::String();
+
+    // 产生临时对象
+    String temp = String(0);
+
+    // memberwise的拷贝_name
+    _name.String::operator=(temp);
+
+    // 摧毁临时对象
+    temp.String::~String();
+
+    _cnt = 0;
+}
+
+// 明显可能的优化方式：
+Word::Word:_name(0) {
+    _cnt = 0;
+}
+
+// 可被展开为
+Word::Word {
+    _name.String::String(0);
+    _cnt = 0;
+}
+
+
+```
+
+
