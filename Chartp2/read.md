@@ -386,7 +386,14 @@ Word::Word {
     _cnt = 0;
 }
 
-
 ```
 
+我们不禁要提出一个合理的问题：member initialization list中到底会发生什么事情？编译器会一一操作initialization list，以适当的次序在construct之内安插初始化操作，并且在任何explicit user code之前。
 
+另一个常见的问题是，是否你能像下面这样，调用一个`member function`以设定一个member的初值：
+```c++
+// X::xfoo()被调用，这样好吗？
+X::X(int val)
+    : i(xfoo(val)), j(val)
+{}
+```
