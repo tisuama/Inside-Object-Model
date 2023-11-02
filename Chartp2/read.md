@@ -359,6 +359,7 @@ public:
 };
 
 // 可能展开成一下形式：
+// 这里Word construct会先产生一个暂时性的String object，然后它初始化，在以一个assignment 预算符将暂时性object指定给_name，然后再摧毁那个暂时性的object。
 Word::Word {
     // 调用Stirng 的default construct
     _name.String::String();
@@ -397,3 +398,32 @@ X::X(int val)
     : i(xfoo(val)), j(val)
 {}
 ```
+`Member function`的使用时合法的（当然我们必须不考虑他所用到的members是否已初始化），这是因为和此object相关的this指针已经被构建妥当，而construct大约被填充为：
+```c++
+X::X(/* this pointer */ int val) {
+    i = this->xfoo(val);
+    j = val;
+}
+```
+最后如果一个`derived class member function`被调用，其返回值被当做base class construct的一个参数，将会如何：
+```c++
+class FooBar: public X {
+    int _fval;
+public:
+    int fval() { return _fval; }
+function
+    FooBar(int val)
+        : _fval(val)
+        , X(fval()) // 注: fval()作为base class
+    {}
+};
+
+// 会是一个好主意吗？
+// 下面是它可能的扩张结果
+```c++
+FooBar::FooBar( /* this pointer goes here */) {
+    X::X(this, this->fval());
+    _fval = val;
+}
+```
+它确实不是一个好主意，简略的说，编译器会对`initialization  list`一一处理并可能重新排序，它反映出member的声明次序，它会安插一些代码到construct体内，并置于任何explicit user code之前。
