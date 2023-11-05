@@ -426,7 +426,5 @@ FooBar::FooBar( /* this pointer goes here */) {
     _fval = val;
 }
 ```
-它确实不是一个好主意，简略的说，编译器会对`initialization  list`一一处理并可能重新排序，它反映出member的声明次序，它会安插一些代码到construct体内，并置于任何explicit user code之前。
-
-
+它确实不是一个好主意（后续base class 和virtual base class初始化顺序会详细说明），简略的说，编译器会对`initialization  list`一一处理并可能重新排序，它反映出member的声明次序，它会安插一些代码到construct体内，并置于任何explicit user code之前。
 
