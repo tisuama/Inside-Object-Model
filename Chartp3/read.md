@@ -18,3 +18,9 @@ if (&a == &b) {
 class Y: public virtual X {};
 class Z: public virtual X {};
 ```
+事实上，Y、Z的大小受到三个因素影响：
+1. 语言本身所造成的额外负担（overhead)
+2. 编译器对特殊情况所提供的优化处理。
+3. Alignment限制，class Y和Z大小截止目前为5byte（32位？）大部分机器上会受到alignment限制
+
+
