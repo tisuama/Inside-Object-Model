@@ -36,5 +36,45 @@ class A: public Y, public Z {};
 如果我们考虑那种“特别对empty virtual base class做了处理”的编译器，一如前所述，class X实体的那1 byte会被拿掉，于是额外的3 bytes填补也不必了，因此class A的大小是 8 bytes。
 
 ### Data Member的绑定
+```c++
+extern float x;
+class Point3d {
+public:
+    Point3d(float, float, float);
+    float X() const { return x; }
+    void X(float new_x) const { x = new_x };
+private:
+    float x, y, z;
+};
 
+```
+Point3d::X()到底会传回class内部那个x，还是外部的那个x？
+C++ Standard以"member scope resolution rules"规定。效果是：
 
+```c++
+extern int x;
+class Point3d {
+    float X() const { return x; };
+};
+
+// 事实上，分析在这里进行。
+
+```
+对member function本身的分析，会直到整个class声明都出现了才开始。
+
+然而，反对对于member function的argument list并不为真，Argument list中的名称还是会在他们第一次遭遇时被释放的决议（resolve)完成，因此在extern 和 nested type names之间的非直觉绑定操作还会发生。
+
+```c++
+typedef int length;
+class Point3d {
+public:
+    void mumble (length val) { _val = val; }
+    length mumble() { return _val; }
+private:
+    // legnth必须在"本class对它第一参考操作”之前被看见
+    // 这样的声明将使之前的参考操作不合法
+    typedef float length;
+    length _val;
+};
+```
+上述情况任然需要某种防御性程序风格：请使用把"nested type"声明放在class起始处。
