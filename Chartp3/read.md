@@ -78,3 +78,25 @@ private:
 };
 ```
 上述情况任然需要某种防御性程序风格：请使用把"nested type"声明放在class起始处。
+
+### Data Memeber 的布局
+已知下面一组data members:
+```c++
+class Point3d {
+public:
+    // ...
+private:
+    float x;
+    static List<Point3d*> *freeList;
+    float y;
+    static const int chunkSize = 250;
+    float z;
+};
+
+```
+
+static data member存放在程序的data segment 中，和个别的class object无关。
+
+C++ Standard要求，在同一个access section中，member的排列只需符合“较晚出现的members在class object中有较高的地址”这一条件极客。也就是，各个member并不一定要连续排列。
+
+编译器还会合成一些内部使用的data members，以支持整个对象模型，vptr就是这样的东西。vptr会放在什么位置呢？传统上它被放在所有明确声明的members最后。不过当前也有一些编译器把vptr放在class object最前端。
