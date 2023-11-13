@@ -100,3 +100,36 @@ static data member存放在程序的data segment 中，和个别的class object�
 C++ Standard要求，在同一个access section中，member的排列只需符合“较晚出现的members在class object中有较高的地址”这一条件极客。也就是，各个member并不一定要连续排列。
 
 编译器还会合成一些内部使用的data members，以支持整个对象模型，vptr就是这样的东西。vptr会放在什么位置呢？传统上它被放在所有明确声明的members最后。不过当前也有一些编译器把vptr放在class object最前端。
+
+### Data Member的存取
+
+#### Static Data Members
+Static data members，按照其字面意义，被编译器提出于class之外，视为一个global变量。
+每一个static data member只有一个实体，存放在程序的data segment之中，每次程序参阅（取用）static member就会被内部转化为对该唯一extern实体的直接参考操作：
+```c++
+// origin.chunkSize = 250
+Point3d::chunkSize == 250；
+
+// pt->chunkSize = 250;
+Point3d::chunkSize = 250;
+```
+
+#### Nonstatic Data Members
+Nonstatic data members直接存放在每一个class object之中，除非经由明确或暗喻的class object，没有办法直接存取它们。只要程序员在一个member function中直接处理一个nonstatic data member，所谓的"implicit class object"就会发生。
+```c++
+Point3d
+Point3d::translate(const Point3d& pt) {
+    x += pt.x;
+    y += pt.y;
+    z += pt.z;
+}
+// 实际上被转化为
+Point3d
+Point3d::translate(Point3d* const this, const Point3d &pt) {
+    this->x += pt.x;
+    this->y += pt.y;
+    this->z += pt.z;
+}
+```
+
+
