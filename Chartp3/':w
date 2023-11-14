@@ -143,8 +143,6 @@ pt->x = 0.0;
 ```
 从origin存取和从ptr存取的差异？当Point3d是一个derived class，而在继承结构中有一个virtual base clas，并且存取的member是一个从该virtual base class继承而来的member时，就会有重大差异。
 
-因为我们不能够说pt必然指向哪一种class type（因此编译器时不知道member真正的offet位置），所以这个存取操作必须延迟到执行期间，经由一个外的间接引导，才能够解决。而origin就没有这个问题，其类型无疑是Point3d class，即使继承自virtual base class，member的offset位置在编译期间就能够确定。
-
 
 
 
