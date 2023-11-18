@@ -149,6 +149,38 @@ pt->x = 0.0;
 
 依次讨论：单一继承且不含virtual funtion、单一继承含virtual function、多重继承、虚拟继承四种情况。
 
-##### a)只要继承不要多态
+#### a)只要继承不要多态
+```c++
+class A1 {
+public:
+    // ...
+private:
+    int val;
+    char bit1;
+};
 
+class A2: public A1 {
+public: 
+    // ...
+private:
+    char bit2;
+};
+
+class A3: public A2 {
+public: 
+    // ...
+private:
+    char bit3;
+};
+
+// sizeof(A1) = 8
+// sizeof(A2) = 12
+// sizeof(A3) = 16
+```
+
+#### b)加上多态
+
+如果我们要处理一个坐标点，而不在乎它是什么Point2d或者Point3d实例，我们需要提供一个virtual function接口。
+
+在C++编译器领域有一个讨论题目：把vptr放置在class object的哪里会更好？
 
