@@ -184,3 +184,4 @@ private:
 
 在C++编译器领域有一个讨论题目：把vptr放置在class object的哪里会更好？
 
+把vptr放在lcas object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会地阿莱一些帮助。
