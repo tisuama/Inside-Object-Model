@@ -184,4 +184,4 @@ private:
 
 在C++编译器领域有一个讨论题目：把vptr放置在class object的哪里会更好？
 
-把vptr放在lcas object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会地阿莱一些帮助。
+把vptr放在class object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前段，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
