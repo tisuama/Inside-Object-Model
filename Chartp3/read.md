@@ -184,4 +184,20 @@ private:
 
 在C++编译器领域有一个讨论题目：把vptr放置在class object的哪里会更好？
 
-把vptr放在class object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前段，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
+把vptr放在class object的尾端，可以保留base class C struct的对象布局，因为允许在C程序中也能使用。
+
+把vptr放在class object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前端，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
+
+#### c) 多重继承
+base class和derived class的object都是从相同地址开始，其差异在于，derived object对象比较大，用于多容纳它自己的nonstatic data member。
+```c++
+Point3d p3d;
+Point2d *p = &p3d;
+```
+把一个derived class obect指定给base class的指针或reference。该操作并不需要编译器去调停或修改地址，它很自然的可以发生，而且提供了最佳执行效率。
+
+多重继承既不像单一继承，也不容易模塑出其模型，多重继承的复杂度在于derived class和其上一个base class乃至于上上个base class之间”非自然“关系。
+
+```c++
+
+```
