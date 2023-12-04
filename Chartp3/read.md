@@ -199,5 +199,32 @@ Point2d *p = &p3d;
 多重继承既不像单一继承，也不容易模塑出其模型，多重继承的复杂度在于derived class和其上一个base class乃至于上上个base class之间”非自然“关系。
 
 ```c++
+class Point2d {
+public:
+    // ...
+protected:
+    float _x, _y;
+};
 
+class Point3d: public Point2d {
+public:
+    // ...
+protected:
+    float _z;
+};
+
+class Vertex {
+public:
+    // ... 注意有virtual 接口，所以有vptr
+protected:
+    Vertex* next;
+};
+
+class Vertex3d: public Point3d, public Vertex {
+public: 
+    // ...
+protected:
+    float mumble;
+};
 ```
+多重继承的问题主要发生于derived class object和其第二或后继base class objects之间的转换；
