@@ -177,6 +177,9 @@ private:
 // sizeof(A2) = 12
 // sizeof(A3) = 16
 ```
+把两个原本独立不相干的class凑成一对"type/subtype"，并带有继承关系，会有什么易犯的错误呢？
+经验不足的人可能会重复设计一些相同操作的函数。
+第二个易犯的错误是，把一个class分解成两层或更多层，有可能为了”表现class体系之抽象化“而膨胀所需空间。C++语言保证：”出现derived class中的base class subobject有其完整原样性“
 
 #### b)加上多态
 
@@ -228,3 +231,5 @@ protected:
 };
 ```
 多重继承的问题主要发生于derived class object和其第二或后继base class objects之间的转换；
+
+
