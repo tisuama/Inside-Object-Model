@@ -4,7 +4,7 @@
 // sizeof X == 1
 class X {};
 ```
-事实上，X并不是空的，他有一个隐晦的1 byte，那是编译器安插进去的一个char，这使得这个class的两个objects得以在内存配置独一无二的内存地址：
+事实上，X并不是空的，它有一个隐晦的1 byte，那是编译器安插进去的一个char，这使得这个class的两个objects得以在内存配置独一无二的内存地址：
 ```c++
 X a, b;
 if (&a == &b) {
@@ -27,7 +27,7 @@ class A: public Y, public Z {};
 那么你期望A的大小是什么？
 如果我们忘记Y、Z都是“虚拟派生”自class X，我们可能回答16。毕竟Y和Z的大小都是8。然而我们对class A施以sizeof 运算符，得到的答案竟然是12。
 
-记住一个virtual base class subject只会在derived class中存在一分实体，不管他在继承体系中出现了多少次，class A的大小由以下几点决定：
+记住一个virtual base class subject只会在derived class中存在一分实体，不管它在继承体系中出现了多少次，class A的大小由以下几点决定：
 1. 被大家贡献的唯一一个class X实体，大小1 byte
 2. Base class Y的大小，减去“因 virtual base class X而配置”的大小，结果是4 bytes（说的是没有对sizeof(X) = 1, sizeof(Y) = 1 + 4 = 5(alignment = 8)的情况）
 3. class A自己的大小: 0 bytes
@@ -62,7 +62,7 @@ class Point3d {
 ```
 对member function本身的分析，会直到整个class声明都出现了才开始。
 
-然而，反对对于member function的argument list并不为真，Argument list中的名称还是会在他们第一次遭遇时被释放的决议（resolve)完成，因此在extern 和 nested type names之间的非直觉绑定操作还会发生。
+然而，反对对于member function的argument list并不为真，Argument list中的名称还是会在它们第一次遭遇时被释放的决议（resolve)完成，因此在extern 和 nested type names之间的非直觉绑定操作还会发生。
 
 ```c++
 typedef int length;
@@ -192,14 +192,18 @@ private:
 把vptr放在class object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前端，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
 
 #### c) 多重继承
-base class和derived class的object都是从相同地址开始，其差异在于，derived object对象比较大，用于多容纳它自己的nonstatic data member。
+
+![多重继承](./多重继承.png)
+如图3.1b、图3.2a或图3.3。
+你会看到base class和derived calss的objects都是从相同地址开始，其差异在于derived object比较大，用以多容纳它自己的nonstatic data members。
 ```c++
 Point3d p3d;
 Point2d *p = &p3d;
 ```
-把一个derived class obect指定给base class的指针或reference。该操作并不需要编译器去调停或修改地址，它很自然的可以发生，而且提供了最佳执行效率。
+把一个derived calss object指定给base class的指针或引用，该操作不需要编译器去调停或修改地址，它很自然的发生，而且提供最佳的执行效率。
 
-多重继承既不像单一继承，也不容易模塑出其模型，多重继承的复杂度在于derived class和其上一个base class乃至于上上个base class之间”非自然“关系。
+![vptr多重继承](./vptr放在class前端的继承.png)
+图3.2b把vptr放在class object起始处，如果base class没有virtual function，而derived calss有，那么单一继承的自然多态就会被打破，这种情况下，把一个derived object转换成其base类型，就需要编译器介入，用以调整地址。
 
 ```c++
 class Point2d {
