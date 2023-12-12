@@ -236,4 +236,54 @@ protected:
 ```
 多重继承的问题主要发生于derived class object和其第二或后继base class objects之间的转换；
 
+```c++
+extern void mumble(const Vertex&);
+Vertex3d v;
+// 将一个Vertex3d转换成一个Vertex，这是”不自然的”
+mumble(v);
+```
+或是经由所支持的virtual function机制做转换。因支持“virtual function之调用操作“而引发的问题在4.2节讨论。
+
+对于一个多重派生对象，将其地址指定给”最左端（也就是第一个）base class的指针”，情况将和单一继承时相同，因为二者都指向相同的起始地址，需付出的成本只有地址的指定操作而已）。至于第二个或后继的base class的地址指定操作，则需要将地址修改过：加上（或减去）鉴于中间的base class subobjects大小。
+```c++
+Vertex3d v3d;
+Vertex *pv;
+Point2d *p2d;
+Point3d *p3d;
+
+// 那么下面指定操作：
+pv = &v3d;
+
+// 需要这样内部转换：
+pv = (Vertex*)(((char*)&v3d) + sizeof(Point3d));
+
+// 而下面指定操作：
+p2d = &v3d;
+p3d = &v3d;
+
+// 都只需要简单拷贝其地址就行了。如果有两个指针如下：
+Vertex3d *pv3d;
+Vertex   *pv;
+
+// 那么下面指定操作：
+pv = pv3d;
+
+// 不能简单被转换为：
+pv = (Vertex*)((char*)pv3d) + sizeof(Point3d);
+
+// 因为如果pv3d为0，pv将获得sizeof(Point3d)的值，这是错误的！所以，对于指针，内部转换需要一个条件测试：
+pv = pv3d ? (Vertex*)((char*)pv3d) + sizeof(Point3d) : 0;
+
+// 至于reference，则不需要针对可能的0的值做防守，因为reference不可能参考到“无物”（no object)。
+```
+
+![数据布局：多重继承](./数据布局：多重继承.png)
+
+C++ Standard并未要求Vertex3d中的base class Point3d和Vertex有特定的排列次序。
+
+如果要存取第二个base calss中的一个data member，将会是怎样的情况？需要付出额外的成本吗？不，member的位置在编译时就固定了，因此存取member只是一个简单的offet运算，就像单一继承一样简单。
+
+
+#### 虚拟继承（Virtual Inheritance）
+多重继承语义上的副作用就是，它必须支持某种形式的"shared subobject继承“。一个典型例子是最早的iostream library：
 
