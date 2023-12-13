@@ -286,4 +286,25 @@ C++ Standard并未要求Vertex3d中的base class Point3d和Vertex有特定的排
 
 #### 虚拟继承（Virtual Inheritance）
 多重继承语义上的副作用就是，它必须支持某种形式的"shared subobject继承“。一个典型例子是最早的iostream library：
+```c++
+class ios { ... }
+class istream: public ios  { ... };
+class ostream: public ios  { ... };
+class iostream: 
+    public istream, public ostream { ... };
+```
+![iostream多重继承](./iostream继承.png)
+
+```c++
+class ios { ... };
+class istream: public virtual ios { ... };
+class ostream: public virtual ios { ... };
+class iostream: 
+    public istream, public ostream { ... };
+```
+要在编译器中支持虚拟继承，实在是困难度颇高。实现技术的挑战在于，要找到一个足够有效地方法，将istream和ostream各自维护一个ios subobject，折叠成一个由iostream维护的单一ios subobject，并且还可以保存base class和derived class的指针之间的多态指定操作。
+
+
+一般的方法如下所述。
+
 
