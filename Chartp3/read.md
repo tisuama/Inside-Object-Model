@@ -421,7 +421,8 @@ protected:
 #### 指向"Member的指针”的效率问题
 
 为每一个“member存取操作”加上一层间接性（经由已绑定的指针），会使执行时间多一倍不止。以指向“member的指针“来存取数据，在一次用掉了双倍时间，要把”指向member的指针”绑定到class object身上，需要额外的把offset减1。
-![指向data member](./虚拟继承对“指向data member的指针"存取方式的影响.png)
+
+![指向data member](./虚拟继承对指向datamember的指针存取方式的影响.png)
 
 由于继承的data member是直接存放在class object之中，所以继承的引入一点也不会影响这些码的效率。虚拟继承所带来的主要冲击是，它妨碍了优化的有效性。为什么呢？在两个编译器（CC和NCC）
 中，每一层虚拟继承都导入一个额外的层次间接性。每次存取Point::x，像这样：
