@@ -130,7 +130,7 @@ Point3d::translate(Point3d* const this, const Point3d &pt) {
     this->y += pt.y;
     this->z += pt.z;
 }
-``` 对一个nonstatic data member进行存取操作，编译器需要把class object的起始地址加上data member的偏移量（offset），例如，
+// 对一个nonstatic data member进行存取操作，编译器需要把class object的起始地址加上data member的偏移量（offset），例如，
 ```c++
 origin._y = 0.0;
 // &origin._y的地址为
@@ -189,7 +189,7 @@ private:
 
 把vptr放在class object的尾端，可以保留base class C struct的对象布局，因为允许在C程序中也能使用。
 
-把vptr放在class object的前端，对于”在多重继承之下，通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前端，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
+把vptr放在class object的前端，对于”在多重继承之下（下一节），通过指向class members的指针调用virtual function"，会带来一些帮助。否则，不仅”从class object起点开始量起“的offset必须在执行期备妥，甚至于class vptr之间的offset也必须备妥，当然，vptr放在前端，代价就是丧失了C语言兼容性。但是，这种丧失有多少意义？有多少程序会从一个C struct派生出一个具有多态性质的class呢？
 
 #### c) 多重继承
 
@@ -245,6 +245,7 @@ mumble(v);
 或是经由所支持的virtual function机制做转换。因支持“virtual function之调用操作“而引发的问题在4.2节讨论。
 
 对于一个多重派生对象，将其地址指定给”最左端（也就是第一个）base class的指针”，情况将和单一继承时相同，因为二者都指向相同的起始地址，需付出的成本只有地址的指定操作而已）。至于第二个或后继的base class的地址指定操作，则需要将地址修改过：加上（或减去）鉴于中间的base class subobjects大小。
+
 ```c++
 Vertex3d v3d;
 Vertex *pv;
@@ -306,5 +307,130 @@ class iostream:
 
 
 一般的方法如下所述。
+Class中如果内含一个或多个virtual base class subobjects。像istream那样，将被分割成两部分：一个不变局部和一个共享局部。不变局部中的数据，不管后续如何衍化，总是拥有固定的offset（从object头部算起）。所以这部分数据可以直接存取；至于共享局部，所表现出的就是virtual base class subobjects。这一部分数据其位置会因为每次派生操作而变化。所以只能间接存取，各家编译器实现方式上差异在于间接存取方式不同。
+```c++
+class Point2d {
+public:
+    // ...
+protected:
+    float _x, _y;
+};
 
+class Vertex: public virtual Point2d {
+public:
+    // ...
+private:
+    Vertex *next;
+};
+
+class Point3d: public virtual Point2d {
+public:
+    // ...
+protected:
+    float _z;
+};
+
+class Vertex3d: public Vertex, public Point3d {
+public:
+    // ...
+protected:
+    float mumble;
+};
+
+```
+![Vertex继承关系](./Vertex继承关系.png)
+
+一般布局策略是先安排好derived class的不变部分，然后再建立其共享部分。
+
+如何存取class的共享部分呢？cfront编译器会在每一个derived class object中安插一些指针，每个指针指向一个virtual base class，要存取继承而来的virtual base class members，可以使用相关指针间接完成。
+
+```c++
+void Point3d::operator+=(const Point3d &rhs) {
+    _x += rhs._x;
+    _y += rhs._y;
+    _z += rhs._z;
+}
+
+//  在cfront策略下，这个运算符会被转换为：
+__vbcPoint2d->_x += rhs.__vbcPoint2d->_x;
+__vbcPoint2d->_y += rhs.__vbcPoint2d->_y; // vbc: virtual base class（共享部分？)
+_z += rhs._z;
+
+
+// 而一个derived class和一个base class的实例之间的转换，像这样：
+Point2d *p2d = pv3d;
+
+// 在cfront策略之下，会被变成：
+Point2d *p2d = pv3d ? pv3d->__vbcPoint2d: 0;
+```
+这样实现模型的缺点：
+1）每个对象必须针对每一个virtual base class背负一个额外的指针，然而我们希望class object有固定的负担，不会因为virtual base class的数目而有所变化，如何解决？
+2）由于虚拟继承串链的加长，导致间接存取层次增加？假如有三层虚拟衍化，需要三次间接存取，然而我们希望有固定的存取时间？不因虚拟化的深度而改变？
+
+`MetaWare`和其他编译器仍然使用cfront原始模型解决第二个问题？它们经由拷贝操作取得所有nested virtual base class指针，放到derived class object之中，解决”固定存取时间“的问题，虽然付出了空间上的代价。
+![虚拟继承](./虚拟继承.png)
+
+至于第一个问题，一般由两种方式解决：
+a) 微软Mirocsoft编译器中每个class object中如果有一个或多个virtual base class就会由编译器安插一个指针，指向virtual base class table。至于真正的virtual base class指针，放在该表格中。
+
+b) 在virtual function table中放置virtual base class的offset（而不是地址），下图显示这种实现模型。在新的Sun编译器中，virtual function table可经由正值或者负值来索引。如果正值，就显然索引到virtual function。如果是负值，则是索引到virtual base class offset。在这样的策略下，point3d的operator+=运算符必须被转换成以下形式：
+```c++
+(this + __vptr__Point3d[-1] /* 是偏移 */)->_x += (&rhs + rhs.__vptr__Point3d[-1])->_x;
+(this + __vptr__Point3d[-1] /* 是偏移 */)->_y += (&rhs + rhs.__vptr__Point3d[-1])->_y;
+_z += rhs._z;
+```
+
+![虚拟继承](./offset实现的虚拟继承.png)
+(注意每个object对象都有一个__vptr)
+
+经由一个非多态的class object来存取一个继承而来的virtual base calss的member，像这样：
+```c++
+Point3d origin;
+// ...
+origin._x;
+```
+可以被优化成一个直接存取操作，就好像一个经由对象调用的virtual function调用操作，可以在编译器被决议（resolve)完成一样。这次存取以及下一次存取之间，对象的类型不可能改变。
+
+一般而言，virtual base class最有效的运行形式就是：一个抽象的virtual base class，没有任何data members。
+
+#### 对象成员效率
+
+旨在测试聚合、封装、以及继承所引发的额外负荷程度。
+
+
+#### 指向Data Members的指针(Pointer to Data Members)
+
+指向data members的指针，是一个有点神秘但是颇有用处的语言特性，特别是你需要调查class members的底层布局的话。这样的调查可以决定vptr放在class的起始出或是尾端，另一个用途是可以决定class中access section的次序，是一个神秘但有时有用的特性。
+```c++
+class Point3d {
+public:
+    virtual ~Point3d();
+    // ...
+protected:
+    static Point3d origin;
+    float x, y, z;
+};
+```
+每一个Point3d class object都有三个坐标值，依次为x, y, z，以及一个vptr，至于static data member origin，将被放置在class object之外，唯一不同的是vptr的位置。
+```c++
+// 取一个nonstatic data member的地址 => 得到在class中的offset
+&Point3d::z  => float Point3d::*：返回在class中的offset
+&origin::z   => float *： 返回绑定在class object上的data member的地址
+```
+
+#### 指向"Member的指针”的效率问题
+
+为每一个“member存取操作”加上一层间接性（经由已绑定的指针），会使执行时间多一倍不止。以指向“member的指针“来存取数据，在一次用掉了双倍时间，要把”指向member的指针”绑定到class object身上，需要额外的把offset减1。
+![指向data member](./虚拟继承对“指向data member的指针"存取方式的影响.png)
+
+由于继承的data member是直接存放在class object之中，所以继承的引入一点也不会影响这些码的效率。虚拟继承所带来的主要冲击是，它妨碍了优化的有效性。为什么呢？在两个编译器（CC和NCC）
+中，每一层虚拟继承都导入一个额外的层次间接性。每次存取Point::x，像这样：
+```c++
+pB.*bx
+// 会被转换为
+&pB->__vbcPoint + (bx - 1); // 注意第一层可能被优化为直接存取
+
+// 而不是最直接的：
+&pB + (bx - 1)
+```
 
