@@ -307,7 +307,7 @@ class iostream:
 
 
 一般的方法如下所述。
-Class中如果内含一个或多个virtual base class subobjects。像istream那样，将被分割成两部分：一个不变局部和一个共享局部。不变局部中的数据，不管后续如何衍化，总是拥有固定的offset（从object头部算起）。所以这部分数据可以直接存取；至于共享局部，所表现出的就是virtual base class subobjects。这一部分数据其位置会因为每次派生操作而变化。所以只能间接存取，各家编译器实现方式上差异在于间接存取方式不同。
+Class中如果内含一个或多个virtual base class subobjects。像istream那样，将被分割成两部分：一个不变局部和一个共享局部。不变局部中的数据，不管后续如何衍化，总是拥有固定的offset（从object头部算起）。所以这部分数据可以直接存取；至于共享局部，所表现出的就是virtual base class subobjects。**这一部分数据其位置会因为每次派生操作而变化。所以只能间接存取，各家编译器实现方式上差异在于间接存取方式不同。**
 ```c++
 class Point2d {
 public:
