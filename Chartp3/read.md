@@ -397,8 +397,7 @@ origin._x;
 
 旨在测试聚合、封装、以及继承所引发的额外负荷程度。
 
-
-#### 指向Data Members的指针(Pointer to Data Members)
+#### 指向Data Member的指针(Pointer to Data Members)
 
 指向data members的指针，是一个有点神秘但是颇有用处的语言特性，特别是你需要调查class members的底层布局的话。这样的调查可以决定vptr放在class的起始出或是尾端，另一个用途是可以决定class中access section的次序，是一个神秘但有时有用的特性。
 ```c++
@@ -418,7 +417,7 @@ protected:
 &origin::z   => float *： 返回绑定在class object上的data member的地址
 ```
 
-#### 指向"Member的指针”的效率问题
+#### 指向"Data Member的指针”的效率问题
 
 为每一个“member存取操作”加上一层间接性（经由已绑定的指针），会使执行时间多一倍不止。以指向“member的指针“来存取数据，在一次用掉了双倍时间，要把”指向member的指针”绑定到class object身上，需要额外的把offset减1。
 
