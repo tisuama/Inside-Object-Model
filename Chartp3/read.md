@@ -285,7 +285,7 @@ C++ Standard并未要求Vertex3d中的base class Point3d和Vertex有特定的排
 如果要存取第二个base calss中的一个data member，将会是怎样的情况？需要付出额外的成本吗？不，member的位置在编译时就固定了，因此存取member只是一个简单的offet运算，就像单一继承一样简单。
 
 
-#### 虚拟继承（Virtual Inheritance）
+#### d) 虚拟继承（Virtual Inheritance）
 多重继承语义上的副作用就是，它必须支持某种形式的"shared subobject继承“。一个典型例子是最早的iostream library：
 ```c++
 class ios { ... }
@@ -379,9 +379,9 @@ b) 在virtual function table中放置virtual base class的offset（而不是地�
 (this + __vptr__Point3d[-1] /* 是偏移 */)->_y += (&rhs + rhs.__vptr__Point3d[-1])->_y;
 _z += rhs._z;
 ```
+虽然在此策略下，对于继承而来的members做存取操作，成本会比较昂贵，不过该成本已经被分散至”对member的使用“上，属于局部性成本。
 
 ![虚拟继承](./offset实现的虚拟继承.png)
-(注意每个object对象都有一个__vptr)
 
 经由一个非多态的class object来存取一个继承而来的virtual base calss的member，像这样：
 ```c++
@@ -393,11 +393,7 @@ origin._x;
 
 一般而言，virtual base class最有效的运行形式就是：一个抽象的virtual base class，没有任何data members。
 
-#### 对象成员效率
-
-旨在测试聚合、封装、以及继承所引发的额外负荷程度。
-
-#### 指向Data Member的指针(Pointer to Data Members)
+#### 指向Data Member的指针（Pointer to Data Members）
 
 指向data members的指针，是一个有点神秘但是颇有用处的语言特性，特别是你需要调查class members的底层布局的话。这样的调查可以决定vptr放在class的起始出或是尾端，另一个用途是可以决定class中access section的次序，是一个神秘但有时有用的特性。
 ```c++
@@ -412,12 +408,32 @@ protected:
 ```
 每一个Point3d class object都有三个坐标值，依次为x, y, z，以及一个vptr，至于static data member origin，将被放置在class object之外，唯一不同的是vptr的位置。
 ```c++
-// 取一个nonstatic data member的地址 => 得到在class中的offset
-&Point3d::z  => float Point3d::*：返回在class中的offset
-&origin::z   => float *： 返回绑定在class object上的data member的地址
-```
+// 取得“指向data member之指针”的地址，也就是在class object中的offset
+&Point3d::z  => float Point3d::*
 
-#### 指向"Data Member的指针”的效率问题
+// 取得“已绑定的member”的地址
+&origin::z   => float *
+```
+然而vptr的位置就没有限制，实际上vptr不是放在对象的头部，就是放在对象的尾部。在32位机器上，每一个float是 `4 bytes`，所以我们应该期望的值不是8 就是 12。
+然而，这样的期望却还少 1 byte，对于C和C++程序员而言，这样多少算有点年代的错误了。
+
+问题在于，如何区分一个”没有指向任何data member的指针和一个指向”第一个data member“的指针？考虑如下例子：
+```c++
+float Point3d::*p1 = 0;
+float Point3d::*p2 = &Point3d::x;
+
+if (p1 == p2) {
+    // 如何区分？
+    std::cout << "p1 & p2 contain same value";
+}
+```
+为了区分p1和p2，每一个真正的member offset值都被加上1。因此，无论编译器或者使用者都必须记住，在真正使用该值以指出一个member之前，请先减掉1。
+
+在多重继承之下，如要将第二个（或后继）base class的指针和一个”与derriced class object绑定“之member结合起来，那么将会因为”需要加入offset值”而变得相当复杂。
+
+>   时间测试有点扯...
+
+#### 指向Data Member指针效率问题
 
 为每一个“member存取操作”加上一层间接性（经由已绑定的指针），会使执行时间多一倍不止。以指向“member的指针“来存取数据，在一次用掉了双倍时间，要把”指向member的指针”绑定到class object身上，需要额外的把offset减1。
 

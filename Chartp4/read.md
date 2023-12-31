@@ -139,6 +139,6 @@ void print(const Point3d);
 两个实体拥有独一无二的name mangling，那么任何不正确的调用操作在连接时期就因无法决议（resolved）而失败。有时候我们乐观的称此为”确保类型安全的链表行为“，我说“乐观的”是因为它只可以捕获函数的标记（signature，即函数名称 + 参数数目 + 参数类型）的错误，如果是返回类型的声明错误，就没办法检查出来！
 
 
-
-
+### Virtual Member Function（虚拟成员函数）
+一般实现：每一个class有一个virtual table，内含该class之中作用的virtual function的地址，然后每个object有一个vptr，指向virtual table所在。这里根据单一继承、多重继承和虚拟继承的各种情况，从细部上探究这个模型。
 
