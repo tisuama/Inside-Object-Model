@@ -149,7 +149,7 @@ ptr->z();
 ```
 或许最直接了当的但是成本最高的解决方法就是把必要的信息加在ptr身上。在这样的策略下，一个指针（或是一个reference）含有两项信息：
 >   1. 它所参考到对象的地址
-    2. 对象类型的某种编码，或是某个结构（内含某些信息，用以正确决议出z()函数实例）的地址
+>   2. 对象类型的某种编码，或是某个结构（内含某些信息，用以正确决议出z()函数实例）的地址
 
 这种方式有两个问题：1）它明显增加了空间负担，即使程序不使用多态 2） 它打断了与C程序的链接兼容性
 
@@ -175,12 +175,12 @@ ptr->z();
 
 我们需要知道：
 >   1. ptr所指对象的真实类型，这可使我们选择正确的z()实体
-    2. z()实体位置，以便我们能够调用它
+>   2. z()实体位置，以便我们能够调用它
 
 一个class只有一个virtual table，每一个table内含class object中所有active virtual functions函数实体的地址。这些active virtual function包括：
 >   1. 这个class所定义的函数实体，它会改写（overriding）一个可能存在的base class virtualfunction函数实体
-    2. 继承自base class的函数实体。这是在derived class决定不改写virtual function时才会出现的情况
-    3. 一个pure_vurtial_called()函数实体，它既可以扮演puer virtual function的空间保卫者角色，也可以当做执行器异常处理函数。
+>   2. 继承自base class的函数实体。这是在derived class决定不改写virtual function时才会出现的情况
+>   3. 一个pure_vurtial_called()函数实体，它既可以扮演puer virtual function的空间保卫者角色，也可以当做执行器异常处理函数。
 
 每个virtual function都被指派一个固定的索引值，这个索引在整个继承体系中保持与特定的virtual function的关联。例如在Point class体系中：
 ```c++
@@ -328,11 +328,11 @@ delete pbase2;
 ```
 虽然两个delete操作导致相同的Derived destructor，但它们需要两个不同的virtual table slots：
 >   1. pbase1不需要调整this指针（因为Base1是最左端base class之故，它已经指向Derived对象的起始处），其virtual table slot需放置真正的destructor地址
-    2. pbase2需要调整this指针。其virtual table slot需要相关的thunk地址。
+>   2. pbase2需要调整this指针。其virtual table slot需要相关的thunk地址。
 
 在多重继承之下，一个derived class内含**n - 1**个额外的virtual tables，n表示其上一层base classe的数目（因此，单一继承将不会有额外的virtual tables）。对于本例子Derived而言，会有两个virtual table被编译器产生出来：
 >   1. 一个主要实体，与Base1（最左端base class共享）
-    2. 一个次要实体，与Base2（第二个base class有关）
+>   2. 一个次要实体，与Base2（第二个base class有关）
 
 针对每一个virtual tables，Derived对象中有对应的vptr。下图说明了这一点，vptrs将在constructors中被设立初值。
 ![多重继承](./多重继承.png)
@@ -391,4 +391,38 @@ protected:
 
 当一个virtual base class从另一个virtual base class派生而来，并且两者都支持virtual function和nonstatic data members时，编译器对于virtual base class的支持简直就像进了迷宫一样。我的建议是，不要在一个virtual base class中声明一个nonstatic data members。如果这么做，你会距离复杂的深渊愈来愈近，终不可拔。
 
+### 函数的效能
+比较一个nonmember friend function，一个member function，以及一个virtual member function，并且virtual member function分别在单一、虚拟、多重继承三种情况下执行。下面为nonmember function
+```c++
+void cross_product(const Point3d& pa, const Point3d& pb) {
+    Point3d pc;
+    pc.x = pa.x * pb.z - pa.z * pb.y;
+    pc.y = pa.z * pb.x - pa.x * pb.z;
+    pc.z = pa.x * pb.y - pa.y * pb.x;
+}
+
+main() {
+    Point3d pa(1.725, 0.875, 0.478);
+    Point3d pb(0.315, 0.317, 0.838);
+    
+    for (int iters = 0; iters < 10000000; iters++) {
+        cross_product(pa, pb);
+    }
+    return 0;
+}
+```
+![函数效率](./函数效率.png)
+
+nonmember 或 static member 或 nonstatic member函数都被转化为相同的形式，所以三者效率相同。
+
+而inline函数提高了25%左右的效率，而其优化版本的表现简直是奇迹。这一惊人的结果归功于编译器将”被视为不变的表达式（expressions）“提到循环之外，因此只计算一次。
+
+我对virtual function调用是通过一个reference，而不是通过一个对象，由此我们可以确定调用操作确实经过虚拟机制。效率降低程度从4%到11%不等，其中一部分反映出Point3d construct对于vptr一千万次的设定操作，其他则因为CC和NCC两者使用delta-offset（偏移差值）模型来支持virtual function。
+该模型中，需要一个offset以调整this指针，指向放置于virtual table中的适当位置。所有这样的调用形式：
+```c++
+ptr->virt_func();
+
+// 都被转换为：将this指针调整值传过去
+(*ptr->__vptr[index].addr)(ptr + ptr->__vptr[index].delta);
+```
 
