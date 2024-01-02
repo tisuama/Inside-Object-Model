@@ -142,3 +142,253 @@ void print(const Point3d);
 ### Virtual Member Function（虚拟成员函数）
 一般实现：每一个class有一个virtual table，内含该class之中作用的virtual function的地址，然后每个object有一个vptr，指向virtual table所在。这里根据单一继承、多重继承和虚拟继承的各种情况，从细部上探究这个模型。
 
+
+为了支持virtual function机制，必须首先能够对多态对象有某种形式的“执行期类型判断法（runtime type resolution）”也就是说，以下调用操作需要ptr在执行期间的某些相关信息：
+```c++
+ptr->z();
+```
+或许最直接了当的但是成本最高的解决方法就是把必要的信息加在ptr身上。在这样的策略下，一个指针（或是一个reference）含有两项信息：
+>   1. 它所参考到对象的地址
+    2. 对象类型的某种编码，或是某个结构（内含某些信息，用以正确决议出z()函数实例）的地址
+
+这种方式有两个问题：1）它明显增加了空间负担，即使程序不使用多态 2） 它打断了与C程序的链接兼容性
+
+C++中多态（polymorphism）表示“以一个public base class的指针（或reference），寻址一个derived class object”的意思。例如下面的声明：
+```c++
+Point *ptr;
+
+// 我们可以指定ptr以寻址一个Point2d对象：
+ptr = new Point2d;
+
+// 或一个Point3d对象：
+ptr = new Point3d;
+```
+在runtime type identification(RTTI) 性质与1993年被引入C++语言之前，C++对“积极多态”的唯一支持，就是对于virtual function call的决议（resolution）操作。有了RTTI，就能在执行期查询一个多态pointer或堕胎的reference。
+
+由于没有polymorphic之类的新关键词，因此识别一个class是否支持多态，唯一适当的方法就是看看它是否有任何virtual function。只要class拥有一个virtual function，他就需要这份额外的执行期信息。
+
+下一个明显的问题是，额外信息以何种方式存储起来？
+```c++
+// z是virtual function，那么什么信息才能让我们在执行期间调用正确的z()实体？
+ptr->z();
+```
+
+我们需要知道：
+>   1. ptr所指对象的真实类型，这可使我们选择正确的z()实体
+    2. z()实体位置，以便我们能够调用它
+
+一个class只有一个virtual table，每一个table内含class object中所有active virtual functions函数实体的地址。这些active virtual function包括：
+>   1. 这个class所定义的函数实体，它会改写（overriding）一个可能存在的base class virtualfunction函数实体
+    2. 继承自base class的函数实体。这是在derived class决定不改写virtual function时才会出现的情况
+    3. 一个pure_vurtial_called()函数实体，它既可以扮演puer virtual function的空间保卫者角色，也可以当做执行器异常处理函数。
+
+每个virtual function都被指派一个固定的索引值，这个索引在整个继承体系中保持与特定的virtual function的关联。例如在Point class体系中：
+```c++
+class Point {
+public:
+    virtual ~Point();
+    virtual Point& mult(float) = 0;
+    // ...
+    float x() const { return _x; }
+    virtual float y() const { return 0; }
+    virtual float z() const { return 0; }
+
+protected:
+    Point(float x = 0.0);
+    float _x;
+};
+```
+virtual destuctor被赋值slot1，而mult()被赋值slot 2。此例并没有mult()的函数定义（因为它是一个pure vurtial function），所以pure_virtual_called（）的函数地址会被放在slot2中。如果该函数被意外调用，通常的操作时结束掉这个程序。y()被赋值slot 3，而z()被赋值slot 4。x()的slot是多少？答案是没有？因为x()并非virtual function。
+![单一继承内存布局](./单一继承.png)
+
+
+当一个class派生自Point时，会发生什么事？例如class Point2d：
+```c++
+class Point2d: public Point {
+public:
+    Point2d(float x = 0.0, float y = 0.0)
+        : Point(x), _y(y)
+    {}
+
+    Point2d& mult(float);
+    float y() const { return _y; }
+    // ...
+
+protected:
+    float _y;
+};
+```
+
+一般而言，我们并不知道ptr所指对象的真正类型。然而，我们知道，经由ptr可以存取到该对象的virtual table。
+虽然我们不知道哪一个z()函数实体会被调用，但我们知道每一个z()函数的地址都被放在slot 4。
+
+这些信息使得编译器可以将该调用转化为：
+```c++
+(*ptr->vptr[4])(ptr);
+```
+唯一一个在执行期才能知道的东西是：slot 4所指的到底是哪一个z()函数实体?
+
+
+### 多重继承下 Virtual Functions
+在多重继承中支持virtual functions，其复杂度围绕在第二个及后继的base class身上，以及“必须在执行期调整this指针”这一点。例如：
+```c++
+class Base1 {
+public:
+    Base1();
+    virtual ~Base1();
+    virtual void speakClearly();
+    virtual Base1* clone() const;
+
+protected:
+    float data_Base1;
+};
+
+class Base2 {
+public:
+    Base2();
+    virtual ~Base2();
+    virtual void mumble();
+    virtual Base2* clone() const;
+
+protected:
+    float data_Base2;
+};
+
+class Derived: public Base1, public Base2 {
+public:
+    Derived();
+    virtual ~Derived();
+    virtual Derived* clone() const;
+
+protected:
+    float data_Derived;
+};
+```
+
+“Derived支持virtual function”的困难度，统统落在Base2 subject身上。有三个问题需要解决？
+1）virtual destuctor 2）被继承下来的Base2::mumble() 3）一组clone函数实体。
+
+##### 第一个负担
+
+首先我们从heap中（低到高）配置得到Derived对象地址，指定给一个Base2指针：
+```c++
+Base2 *pbase2 = new Derived;
+
+// 新的Derived对象地址必须调整，以指向Base2 subobject。编译时期会产生以下的码：
+Derived* temp = new Derived;
+Base2* pbase2 = temp ? temp + sizeof(Base1) : 0;
+```
+如果没有这样的调整，指针的任何“非多态运用”都将失败：
+```c++
+pbase2->data_Base2;
+```
+当程序想删除pbase2所指对象时：
+```c++
+// 必须先调用正确的virtual destuctor函数实体
+// 然后使用delete 运算符
+// pbase2可能需要调整，以指出完整的对象起始点
+delete pbase2;
+```
+指针必须被再一次调整，以求再一次指向Derived对象起始处，然而上述offset假发却不能在编译时期直接设定，因为pbase2所指对象只有在执行期才能确定：
+
+一般的规则是，经由指向“第二或后继之base class”的指针（或reference）来调用derived class virtual function。
+```c++
+Base2 *pbase2 = new Derived;
+// ...
+delete pbase2;
+```
+该调用操作所连带的“必要的this指针调整”操作，必须在执行期完成，也就是说，offset的大小，以及把offset加到this指针上头的那一小段程序代码，必须由编译器在某个地方插入。问题是，在哪个地方？
+
+Bjarne原先实施于cfront编译器中的方法是将virtual table加大，使他容纳此处所需的this指针。每一个virtual table slot不再只是一个指针，而是一个聚合体，内含可能的offset及地址，于是virtual function的调用操作由：
+```c++
+(*pbase2->vptr[1])(pbase2);
+
+// 改变为：
+(*pbase2->vptr[1].faddr /* virtual function地址 */)(pbase2 + pbase2->vptr[1].offset /* this指针调整值 */);
+```
+
+比较有效率的方式是利用所谓thunk。Thunk技术初次被引进到编译器技术中，我相信是为了支持ALGOL独一无二的pass-by-name语义。所谓thunk是一小段assembly码，用来以适当的offset值调整this指针；或跳到virtual function去。例如，经由一个Base2指针调用Derived destructor，其相关的thunk可能看起来是这样子：
+```c++
+pbase2_dtor_thunk: 
+    this += sizeof(base1);
+    Derived::~Derived(this);
+```
+
+Thunk技术允许virtual table slot继续内含一个简单地指针，因此多重继承不需要任何空间上的额外负担。Slots中的地址可以直接指向virtual function，可以指向一个相关的thunk（如果需要调整this指针）。于是，对于哪些不需要调整this指针的virtual function而言，也就不需要承载效率上的额外负担。
+
+
+#### 第二个负担
+调整this指针的第二个负担就是，由于两种不同的可能：1）经由derived class（或第一个base class）调用 2）经由第二个（或后继）base class调用，同一函数在virtual table中可能需要多笔对应的slots，例如：
+```c++
+Base1 *pbase1 = new Derived;
+Base2 *pbase2 = new Derived;
+
+delete pbase1;
+delete pbase2;
+```
+虽然两个delete操作导致相同的Derived destructor，但它们需要两个不同的virtual table slots：
+>   1. pbase1不需要调整this指针（因为Base1是最左端base class之故，它已经指向Derived对象的起始处），其virtual table slot需放置真正的destructor地址
+    2. pbase2需要调整this指针。其virtual table slot需要相关的thunk地址。
+
+在多重继承之下，一个derived class内含**n - 1**个额外的virtual tables，n表示其上一层base classe的数目（因此，单一继承将不会有额外的virtual tables）。对于本例子Derived而言，会有两个virtual table被编译器产生出来：
+>   1. 一个主要实体，与Base1（最左端base class共享）
+    2. 一个次要实体，与Base2（第二个base class有关）
+
+针对每一个virtual tables，Derived对象中有对应的vptr。下图说明了这一点，vptrs将在constructors中被设立初值。
+![多重继承](./多重继承.png)
+
+用以支持“一个class拥有多个virtual tables”的传统方法是，将每一个table以外部对象的实诚产生出来，并赋予独一无二的名称，例如，Derived所关联的两个table可能有这样的名称：
+```c++
+vtbl__Derived; //主要
+vtrl__Base2__Derived; // 次要
+```
+将一个Derived对象地址指定给Base1指针或Derived指针时，该被处理的virtual table是主要表格vtbl__Derived，而当你将一个Derived对象地址指定给一个Base2指针时，被处理的virtual table是次要表格vtbl__Base2__Derived。
+
+
+前面提到，有三种情况，第二或后继的base class会影响对virtual function的支持。第一种情况是，通过一个“指向第二个base class”的指针，调用derived class virtual function。例如：
+```c++
+Base2 *ptr = new Derived;
+
+// 调用Derived::~Derived，ptr必须向后调整sizeof(Base1)个bytes
+delete ptr;
+```
+第二种情况是，通过一个”指向derived class“的指针，调用第二个base class中一个继承而来的virtual function。在此情况下，derived class指针必须再次调整，以指向第二个base subobject。例如：
+```c++
+Derived *pder = new Derived;
+
+// 调用Base2::mumble()，pder必须向前调整sizeof(Base1)个bytes
+pder->mumble();
+```
+
+### 虚拟继承下的Virtual Functions
+
+考虑下面的virtual base class派生体系，从Point2d派生出Point3d：
+```c++
+class Point2d {
+public:
+    Point2d(float = 0.0, float = 0.0);
+    virtual ~Point2d();
+    
+    virtual void mumble();
+    virtual float z();
+protected:
+    float _x, _y;
+};
+
+class Point3d: public virtual Point2d {
+public:
+    Point3d(float = 0.0, float = 0.0, float = 0.0);
+    ~Point3d();
+    
+    float z();
+protected:
+    float _z;
+};
+
+```
+虽然Point3d有唯一一个base class，也就是Point2d，但Point3d和Point2d的起始部分并不像”非虚拟单一继承“情况那样一致。这样情况如图显示，由于Point2d和Point3d的对象不再相等，两者之间的转换也就需要调整this指针。至于在虚拟继承的情况下要消除thunks，一般而言已经证明是一项高难度技术。
+![虚拟继承](./虚拟继承.png)
+
+当一个virtual base class从另一个virtual base class派生而来，并且两者都支持virtual function和nonstatic data members时，编译器对于virtual base class的支持简直就像进了迷宫一样。我的建议是，不要在一个virtual base class中声明一个nonstatic data members。如果这么做，你会距离复杂的深渊愈来愈近，终不可拔。
+
+
